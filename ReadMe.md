@@ -1,0 +1,11 @@
+
+
+## dotenv
+
+The dotenv file is expected to provide the following values. 
+
+```ini
+OPENAI_API_KEY="<your api key here>"
+OPENAI_MODEL="gpt-6-luna"
+OPENAI_REASONING="medium"
+```
