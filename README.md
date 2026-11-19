@@ -57,3 +57,9 @@ USER_APPROVAL_REQUIRED="true"
 1. Start by setting up the project, initalizing git, grabbing a fresh openai api key, and setting up agent parameters
 2. Realized user preview + approval would be a smart way of preventing the AI from being able to do something crazy. Reading the instructions its not clear if this fits within the protocol
 3. Work with claude to come up with [this plan](.cursor/plans/nl_banking_with_approval_9f2c99f4.plan.md)
+4. Hand off to Codex
+
+## AI Tools Used
+
+- Cursor + Claude Opus 5.5
+- Codex + GPT Sol 6.2
