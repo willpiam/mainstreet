@@ -48,8 +48,12 @@ Copy `.env.example` to `.env` and fill in your values. The dotenv file is expect
 OPENAI_API_KEY="<your api key here>"
 OPENAI_MODEL="gpt-6-luna"
 OPENAI_REASONING="medium"
+# when enabled the generated commands are not run until the user has reviewed and approved it
+USER_APPROVAL_REQUIRED="true"
 ```
 
 ## How I worked
 
 1. Start by setting up the project, initalizing git, grabbing a fresh openai api key, and setting up agent parameters
+2. Realized user preview + approval would be a smart way of preventing the AI from being able to do something crazy. Reading the instructions its not clear if this fits within the protocol
+3. Work with claude to come up with [this plan](.cursor/plans/nl_banking_with_approval_9f2c99f4.plan.md)
