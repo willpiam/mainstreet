@@ -40,67 +40,77 @@ internal sealed class BankSession
             return new CommandResult("EXIT", ShouldExit: true);
         }
 
-        string output = command switch
+        return command switch
         {
             "balance" => ShowBalance(tokens),
             "deposit" or "withdraw" or "transfer" => Transact(command, tokens),
-            "help" or "?" when tokens.Length == 1 => Help,
-            "help" or "?" or "exit" => "ERROR INVALID_ARGUMENTS",
-            _ => "ERROR UNKNOWN_COMMAND"
+            "help" or "?" when tokens.Length == 1 => new CommandResult(Help),
+            "help" or "?" or "exit" => new CommandResult("ERROR INVALID_ARGUMENTS"),
+            _ => new CommandResult("ERROR UNKNOWN_COMMAND")
         };
-
-        return new CommandResult(output);
     }
 
-    private string ShowBalance(string[] tokens)
+    private CommandResult ShowBalance(string[] tokens)
     {
         if (tokens.Length == 1)
         {
-            return $"{FormatBalance(Chequing)} | {FormatBalance(Savings)}";
+            return BalanceResult([GetBalance(Chequing), GetBalance(Savings)]);
         }
 
         if (tokens.Length != 2)
         {
-            return "ERROR INVALID_ARGUMENTS";
+            return new CommandResult("ERROR INVALID_ARGUMENTS");
         }
 
         string account = tokens[1].ToLowerInvariant();
-        return balances.ContainsKey(account) ? FormatBalance(account) : "ERROR INVALID_ACCOUNT";
+        return balances.ContainsKey(account)
+            ? BalanceResult([GetBalance(account)])
+            : new CommandResult("ERROR INVALID_ACCOUNT");
     }
 
-    private string Transact(string command, string[] tokens)
+    private static CommandResult BalanceResult(AccountBalance[] balances) => new(
+        string.Join(" | ", balances.Select(FormatBalance)),
+        Facts: new BankingFacts("balance", null, null, null, balances));
+
+    private CommandResult Transact(string command, string[] tokens)
     {
         bool isTransfer = command == "transfer";
         if (tokens.Length != (isTransfer ? 4 : 3))
         {
-            return "ERROR INVALID_ARGUMENTS";
+            return new CommandResult("ERROR INVALID_ARGUMENTS");
         }
 
         string account = tokens[1].ToLowerInvariant();
         string destination = isTransfer ? tokens[2].ToLowerInvariant() : account;
         if (!balances.ContainsKey(account) || !balances.ContainsKey(destination))
         {
-            return "ERROR INVALID_ACCOUNT";
+            return new CommandResult("ERROR INVALID_ACCOUNT");
         }
 
         if (!TryParseAmount(tokens[^1], out decimal amount))
         {
-            return "ERROR INVALID_AMOUNT";
+            return new CommandResult("ERROR INVALID_AMOUNT");
         }
+
+        string? from = command == "deposit" ? null : account;
+        string? to = command == "withdraw" ? null : destination;
+        CommandResult Result(string output, AccountBalance[] reported, string? error = null) =>
+            new(output, Facts: new BankingFacts(command, from, to, amount, reported, error));
 
         if (isTransfer && account == destination)
         {
-            return "ERROR SAME_ACCOUNT";
+            return Result("ERROR SAME_ACCOUNT", [], "SAME_ACCOUNT");
         }
 
         if (command != "deposit" && amount > balances[account])
         {
-            return $"ERROR INSUFFICIENT_FUNDS | {FormatBalance(account)}";
+            AccountBalance available = GetBalance(account);
+            return Result($"ERROR INSUFFICIENT_FUNDS | {FormatBalance(available)}", [available], "INSUFFICIENT_FUNDS");
         }
 
         if (command != "withdraw" && balances[destination] + amount > MaximumBalance)
         {
-            return "ERROR BALANCE_LIMIT";
+            return Result("ERROR BALANCE_LIMIT", [], "BALANCE_LIMIT");
         }
 
         // A rejected transfer must leave both accounts intact, so validate both sides before updating either.
@@ -115,16 +125,20 @@ internal sealed class BankSession
         }
 
         string formattedAmount = FormatMoney(amount);
-        return command switch
+        AccountBalance accountBalance = GetBalance(account);
+        if (isTransfer)
         {
-            "deposit" => $"DEPOSIT {formattedAmount} TO {account} | {FormatBalance(account)}",
-            "withdraw" => $"WITHDRAW {formattedAmount} FROM {account} | {FormatBalance(account)}",
-            _ => $"TRANSFER {formattedAmount} FROM {account} TO {destination} | " +
-                 $"{FormatBalance(account)} | {FormatBalance(destination)}"
-        };
+            AccountBalance destinationBalance = GetBalance(destination);
+            return Result($"TRANSFER {formattedAmount} FROM {account} TO {destination} | " +
+                $"{FormatBalance(accountBalance)} | {FormatBalance(destinationBalance)}", [accountBalance, destinationBalance]);
+        }
+
+        string action = command == "deposit" ? "DEPOSIT" : "WITHDRAW";
+        string direction = command == "deposit" ? "TO" : "FROM";
+        return Result($"{action} {formattedAmount} {direction} {account} | {FormatBalance(accountBalance)}", [accountBalance]);
     }
 
-    private static bool TryParseAmount(string input, out decimal amount)
+    internal static bool TryParseAmount(string input, out decimal amount)
     {
         amount = 0m;
         int decimalPoint = input.IndexOf('.');
@@ -139,9 +153,19 @@ internal sealed class BankSession
             && amount <= MaximumBalance;
     }
 
-    private string FormatBalance(string account) => $"{account}={FormatMoney(balances[account])}";
+    private AccountBalance GetBalance(string account) => new(account, balances[account]);
 
-    private static string FormatMoney(decimal amount) => "$" + amount.ToString("F2", CultureInfo.InvariantCulture);
+    private static string FormatBalance(AccountBalance balance) => $"{balance.Account}={FormatMoney(balance.Amount)}";
+
+    internal static string FormatMoney(decimal amount) => "$" + amount.ToString("F2", CultureInfo.InvariantCulture);
 }
 
-internal readonly record struct CommandResult(string Output, bool ShouldExit = false);
+internal readonly record struct CommandResult(string Output, bool ShouldExit = false, BankingFacts? Facts = null);
+
+internal sealed record BankingFacts(
+    string Operation, string? From, string? To, decimal? Amount, AccountBalance[] Balances, string? Error = null)
+{
+    public bool Succeeded => Error is null;
+}
+
+internal readonly record struct AccountBalance(string Account, decimal Amount);

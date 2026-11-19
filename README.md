@@ -2,13 +2,14 @@
 
 Built on [dpo007/banking-cli-starter @ b7eb68e](https://github.com/dpo007/banking-cli-starter/tree/b7eb68e242e7723613321b3b60473c7c29591d20). Run `git diff b7eb68e..HEAD` to see every change made on top of the starter.
 
-A small C# command-line banking simulator with in-memory chequing and savings accounts. Both accounts start at $0.00 each time you run the program.
+A C# command-line banking simulator with in-memory chequing and savings accounts. Both accounts start at $0.00 each time you run the program. Use the original commands or configure an OpenAI-compatible API to make requests in plain English.
 
 ## Run
 
 With the .NET 10 SDK installed, run this from the repo root.
 
 ```sh
+dotnet build BankingCli.sln
 dotnet run --project BankingCli
 ```
 
@@ -40,26 +41,44 @@ bank> exit
 EXIT
 ```
 
-## dotenv
+## API configuration
 
-Copy `.env.example` to `.env` and fill in your values. The dotenv file is expected to provide the following values.
+Run from the repository root. Copy `.env.example` to `.env`, or set the variables in your shell. Process environment variables take precedence over `.env`. Direct banking commands work without API configuration.
 
-```ini
-OPENAI_API_KEY="<your api key here>"
-OPENAI_MODEL="gpt-6-luna"
-OPENAI_REASONING="medium"
-# when enabled the generated commands are not run until the user has reviewed and approved it
-USER_APPROVAL_REQUIRED="true"
-```
+| Variable | Meaning |
+| --- | --- |
+| `OPENAI_API_KEY` | Your provider's API key. Keep it in your environment or the gitignored `.env` file. |
+| `OPENAI_MODEL` | A model that supports Chat Completions with strict JSON Schema output. The example uses `gpt-4.1-mini`. |
+| `OPENAI_BASE_URL` | Optional API base URL, such as `https://api.openai.com/v1`. The SDK appends `/chat/completions`. If unset, the SDK uses OpenAI's default endpoint. |
+| `OPENAI_REASONING` | Optional reasoning effort, such as `low`. Set it only if your model supports it. |
+| `USER_APPROVAL_REQUIRED` | Optional, defaults to `false`. Set it to `true` to preview and confirm plain-English deposits, withdrawals, and transfers. |
+
+With approval enabled, answer `y` or `yes` to execute the previewed transaction. Approval requires interactive input. For piped input the CLI skips the transaction and continues with the next line. Balance requests and direct commands run without an approval prompt.
+
+## Plain-English examples
+
+- “Deposit ten dollars into savings.”
+- “Transfer four dollars from savings to chequing.”
+- “Withdraw a dollar from chequing.”
+- “How much is in savings?”
+- “Show both account balances.”
+
+Submit one operation per line. If asked for clarification, include all details when you retry. If the reply API is unavailable after a command runs, the CLI prints the simulator's original result.
+
+## Verification
+
+Run `dotnet test BankingCli.sln` to verify the command flow and the SDK request and response handling using test doubles. I also ran the following checks in a single session against a local, scripted OpenAI-compatible HTTP endpoint. That exercised both API calls and the simulator. Live model behavior remains unverified.
+
+| Check | Steps and observed result |
+| --- | --- |
+| Successful transfer | Ran `deposit savings 10`, entered “Transfer four dollars from savings to chequing”, then ran `balance`. The reply reported the $4.00 transfer from savings to chequing. `balance` showed $6.00 in savings and $4.00 in chequing. |
+| Missing destination | Entered “Transfer four dollars out of savings”, then ran `balance`. The CLI asked for both the source and destination and to try again. Savings stayed at $6.00 and chequing at $4.00. |
+| Insufficient funds | Entered “Transfer seven dollars from savings to chequing”, then ran `balance`. The reply explained that savings had insufficient funds. Savings stayed at $6.00 and chequing at $4.00. |
+
+In a fresh session seeded with $10.00 in savings, I also returned an HTTP error from the reply endpoint after a $4.00 transfer. The CLI printed the raw transfer result and the next `balance` showed that the $4.00 had moved exactly once.
 
 ## How I worked
 
-1. Start by setting up the project, initalizing git, grabbing a fresh openai api key, and setting up agent parameters
-2. Realized user preview + approval would be a smart way of preventing the AI from being able to do something crazy. Reading the instructions its not clear if this fits within the protocol
-3. Work with claude to come up with [this plan](.cursor/plans/nl_banking_with_approval_9f2c99f4.plan.md)
-4. Hand off to Codex
-
-## AI Tools Used
-
-- Cursor + Claude Opus 5.5
-- Codex + GPT Sol 6.2
+- I set up a copy of the starter and used Cursor with Claude Opus 5.5 to draft a plan that included a transaction preview. [Implementation plan](.cursor/plans/nl_banking_with_approval_9f2c99f4.plan.md)
+- I used Codex with GPT-6.2 Sol to review the plan against the exercise and implement and test the revised flow.
+- We changed the reply design after Codex flagged that an amount-only check would accept swapped balances. I verified the replacement with a test that checks the account-to-balance pairs sent to the reply API and a CLI run whose final balance matched the conversational reply.
