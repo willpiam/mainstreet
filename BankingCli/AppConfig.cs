@@ -3,12 +3,15 @@ namespace BankingCli;
 internal sealed record AppConfig(
     string? ApiKey, string? Model, Uri? Endpoint, string? Reasoning, bool ApprovalRequired)
 {
-    public static AppConfig Load()
+    public static AppConfig Load() => LoadFrom(Directory.GetCurrentDirectory(), environmentOverrides: true);
+
+    internal static AppConfig LoadFrom(string directory, bool environmentOverrides)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (File.Exists(".env"))
+        string path = Path.Combine(directory, ".env");
+        if (File.Exists(path))
         {
-            foreach (string line in File.ReadLines(".env"))
+            foreach (string line in File.ReadLines(path))
             {
                 string entry = line.Trim();
                 int separator = entry.IndexOf('=');
@@ -27,7 +30,9 @@ internal sealed record AppConfig(
             }
         }
 
-        string? Get(string key) => Environment.GetEnvironmentVariable(key) ?? values.GetValueOrDefault(key);
+        string? Get(string key) => environmentOverrides
+            ? Environment.GetEnvironmentVariable(key) ?? values.GetValueOrDefault(key)
+            : values.GetValueOrDefault(key);
 
         string? key = Get("OPENAI_API_KEY");
         string? model = Get("OPENAI_MODEL")?.Trim();

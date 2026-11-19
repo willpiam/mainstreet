@@ -82,3 +82,10 @@ In a fresh session seeded with $10.00 in savings, I also returned an HTTP error 
 - I set up a copy of the starter and used Cursor with Claude Opus 5.5 to draft a plan that included a transaction preview. [Implementation plan](.cursor/plans/nl_banking_with_approval_9f2c99f4.plan.md)
 - I used Codex with GPT-6.2 Sol to review the plan against the exercise and implement and test the revised flow.
 - We changed the reply design after Codex flagged that an amount-only check would accept swapped balances. I verified the replacement with a test that checks the account-to-balance pairs sent to the reply API and a CLI run whose final balance matched the conversational reply.
+- wrote automated tests
+- ran the program myself and messed around with it for a while. Eventually I found the inputs which lead to the wrong actions.. such as.. 
+    - "transfer a dollar 15 from savings to checking" which transfered $15 dollars instead of $1.15
+    - *The exercise says to run a plain-English request only when it maps cleanly onto one command, and to ask for a missing or unclear detail before changing either balance.*
+    - I will note that if `USER_APPROVAL_REQUIRED` had been enabled the user would have been able to catch this before approval 
+    - using claude I created [A plan to clarify ambiguous amounts](.cursor/plans/clarify_ambiguous_amounts_d566e37a.plan.md)
+    
