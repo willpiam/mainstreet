@@ -17,6 +17,12 @@ internal sealed class RequestInterpreter(IChatModel model)
         Recognize common names like checking for chequing, but never substitute a different account.
         Convert clear amounts written in words or with a dollar sign to a positive decimal string with
         at most two decimal places and no sign, currency symbol, or grouping separators. Never round.
+        An amount is clear only when its words or digits have one reading, such as $1.15, 1.15, fifteen dollars,
+        one dollar and fifteen cents, or a dollar fifteen cents. If a dollar amount is followed by a bare number
+        with no cents or decimal point, such as a dollar 15, a dollar fifteen, or five 20, return clarify with
+        message amount. Do this even when one reading seems more common: a dollar fifteen could mean $1.15 or
+        $15, so it must be clarified, and only the word cents or a decimal point makes it clear. Never choose
+        between two possible readings.
         Use to for deposit, from for withdraw, both from and to for transfer, and scope for balance.
         Set unused fields to null. For operation set message to null. For clarify or unsupported set all
         fields other than kind and message to null. Use complete_request if no more specific reason fits.

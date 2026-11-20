@@ -68,6 +68,7 @@ public sealed class ConversationLoopTests
     [InlineData("Transfer $4 out of savings", "clarify", "direction", "source and destination")]
     [InlineData("Put some money into savings", "clarify", "amount", "positive dollar amount")]
     [InlineData("What is my balance?", "clarify", "account", "account name")]
+    [InlineData("Transfer a dollar 15 from savings to checking", "clarify", "amount", "positive dollar amount")]
     [InlineData("Deposit $4 in savings and withdraw $2 from chequing", "unsupported", "one_operation", "one banking operation")]
     public async Task ClarificationLeavesBothBalancesUnchanged(string input, string kind, string reason, string expected)
     {

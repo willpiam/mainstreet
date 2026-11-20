@@ -4,19 +4,19 @@ overview: Make plain-English requests whose dollar amount can be read more than 
 todos:
   - id: prompt
     content: Add ambiguous-amount rules to Instructions in RequestInterpreter.cs
-    status: pending
+    status: completed
   - id: scripted-test
     content: Add 'a dollar 15' case to ClarificationLeavesBothBalancesUnchanged in ConversationLoopTests.cs
-    status: pending
+    status: completed
   - id: live-tests
     content: Add AmbiguousAmountAsksForClarification and UnambiguousCentAmountsTransferExactly live theories in LiveApiTests.cs
-    status: pending
+    status: completed
   - id: readme
     content: Rewrite README How I worked bullets for the bug and fix; mention live test filter
-    status: pending
+    status: completed
   - id: verify
     content: Run unit tests, live tests, and a manual CLI check
-    status: pending
+    status: completed
 isProject: false
 ---
 

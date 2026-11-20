@@ -150,6 +150,16 @@ public sealed class LiveApiSuccessTests(ITestOutputHelper output) : LiveApiTestB
         Assert.Equal("chequing=$4.00 | savings=$6.00", balance);
     }
 
+    [LiveTheory]
+    [InlineData("Transfer $1.15 from savings to chequing")]
+    [InlineData("Transfer one dollar and fifteen cents from savings to chequing")]
+    [InlineData("Transfer a dollar fifteen cents from savings to chequing")]
+    public async Task UnambiguousCentAmountsTransferExactly(string request)
+    {
+        var (_, balance) = await RunAsync("deposit savings 10", request);
+        Assert.Equal("chequing=$1.15 | savings=$8.85", balance);
+    }
+
     [LiveFact]
     public async Task WithdrawalInPlainEnglishDebitsChequing()
     {
@@ -232,6 +242,18 @@ public sealed class LiveApiFailureTests(ITestOutputHelper output) : LiveApiTestB
             reply is "Please include both the source and destination accounts and try again."
                 or "Please include the account name, or say both accounts for a balance check, and try again.",
             reply);
+        Assert.Equal("chequing=$0.00 | savings=$10.00", balance);
+    }
+
+    [LiveTheory]
+    [InlineData("Transfer a dollar 15 from savings to checking")]
+    [InlineData("Transfer a dollar fifteen from savings to chequing")]
+    [InlineData("Withdraw five 20 from savings")]
+    public async Task AmbiguousAmountAsksForClarification(string request)
+    {
+        var (transcript, balance) = await RunAsync("deposit savings 10", request);
+        Assert.Contains("Please include a positive dollar amount with up to two decimal places and try again.",
+            transcript);
         Assert.Equal("chequing=$0.00 | savings=$10.00", balance);
     }
 
