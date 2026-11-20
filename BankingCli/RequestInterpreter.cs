@@ -25,6 +25,9 @@ internal sealed class RequestInterpreter(IChatModel model)
 
         Ask for clarification if a genuine banking request is conditional or a required detail is missing,
         ambiguous, or invalid. Never infer a missing account, amount, or transfer direction.
+        In a positional command of the form "transfer <from> <to> <amount>", the first account is the source
+        and the second is the destination. This order also applies when the amount starts with a dollar sign.
+        "transfer savings chequing $3.40" -> operation transfer, from savings, to chequing, amount "3.40".
         For multiple requested operations, return unsupported with message one_operation. A balance check
         for both accounts is one operation. Use scope both only when the user asks for both or all balances.
         An unspecified single balance needs clarification. The only accounts are chequing and savings.
