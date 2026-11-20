@@ -96,6 +96,17 @@ public sealed class LiveApiInterpretationEdgeTests(ITestOutputHelper output) : L
         Assert.Contains(reply, new[] { Account, Amount, CompleteRequest });
     }
 
+    [LiveTheory]
+    [InlineData("Could you put $5 into savings?", "chequing=$12.35 | savings=$23.64")]
+    [InlineData("Could you transfer $5 from savings to chequing?", "chequing=$17.35 | savings=$13.64")]
+    public async Task DirectRequestsExecuteEvenWhenPhrasedAsPoliteQuestions(string request, string expectedBalance)
+    {
+        LiveRun result = await RunScenarioAsync(["deposit chequing 12.35", "deposit savings 18.64", request]);
+
+        Assert.Equal(new[] { RequestCall, ReplyCall }, result.Calls);
+        Assert.Equal(expectedBalance, result.Balance);
+    }
+
     private async Task<string> RunRejectedAsync(string request)
     {
         LiveRun result = await RunScenarioAsync([
