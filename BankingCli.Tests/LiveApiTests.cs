@@ -74,7 +74,16 @@ internal static class LiveConfiguration
 
 public abstract class LiveApiTestBase(ITestOutputHelper output)
 {
+    protected const string RequestCall = "banking_request";
+    protected const string ReplyCall = "banking_reply";
+
     protected async Task<(string Output, string Balance)> RunAsync(params string[] lines)
+    {
+        LiveRun result = await RunScenarioAsync(lines);
+        return (result.Output, result.Balance);
+    }
+
+    protected async Task<LiveRun> RunScenarioAsync(string[] lines, bool approvalRequired = false, bool redirected = true)
     {
         AppConfig config = LiveConfiguration.Config;
         output.WriteLine($"model={config.Model}");
@@ -82,22 +91,29 @@ public abstract class LiveApiTestBase(ITestOutputHelper output)
         IChatModel? model = OpenAiChatModel.Create(config);
         Assert.NotNull(model);
 
+        var observed = new ObservingModel(model);
         var bank = new BankSession();
-        var console = new ScriptedConsole(lines);
-        await new ConversationLoop(bank, console, model, approvalRequired: false).RunAsync();
+        var console = new ScriptedConsole(lines, redirected);
+        await new ConversationLoop(bank, console, observed, approvalRequired).RunAsync();
         string transcript = console.Output.ToString();
         output.WriteLine(transcript);
-        return (transcript, bank.Execute("balance").Output);
+        Assert.All(observed.Calls, call => Assert.False(string.IsNullOrWhiteSpace(call.Response),
+            $"The configured provider returned no completion for {call.Schema}."));
+        return new LiveRun(transcript, bank.Execute("balance").Output, observed.Calls.Select(call => call.Schema).ToArray());
     }
 
-    private sealed class ScriptedConsole(params string[] input) : IConsoleIO
+    protected sealed record LiveRun(string Output, string Balance, string[] Calls);
+
+    private sealed class ObservingModel(IChatModel inner) : IChatModel
     {
-        private readonly Queue<string?> lines = new(input);
-        public StringWriter Output { get; } = new() { NewLine = "\n" };
-        public bool IsInputRedirected => true;
-        public string? ReadLine() => lines.TryDequeue(out string? line) ? line : null;
-        public void Write(string text) => Output.Write(text);
-        public void WriteLine(string text) => Output.WriteLine(text);
+        public List<(string Schema, string? Response)> Calls { get; } = [];
+
+        public async Task<string?> CompleteAsync(string instructions, string input, string schemaName, string schema)
+        {
+            string? response = await inner.CompleteAsync(instructions, input, schemaName, schema);
+            Calls.Add((schemaName, response));
+            return response;
+        }
     }
 }
 
@@ -121,14 +137,12 @@ public sealed class LiveApiSuccessTests(ITestOutputHelper output) : LiveApiTestB
     [LiveFact]
     public async Task DirectCommandsDoNotCallTheConfiguredModel()
     {
-        var observed = new ObservingModel(OpenAiChatModel.Create(LiveConfiguration.Config)!);
-        var console = new DirectConsole("deposit savings 10", "balance", "exit");
-        await new ConversationLoop(new BankSession(), console, observed, approvalRequired: false).RunAsync();
+        LiveRun result = await RunScenarioAsync(["deposit savings 10", "balance", "exit"]);
 
-        Assert.Equal(0, observed.Calls);
-        Assert.Contains("DEPOSIT $10.00 TO savings | savings=$10.00", console.Output.ToString());
-        Assert.Contains("chequing=$0.00 | savings=$10.00", console.Output.ToString());
-        Assert.Contains("EXIT", console.Output.ToString());
+        Assert.Empty(result.Calls);
+        Assert.Contains("DEPOSIT $10.00 TO savings | savings=$10.00", result.Output);
+        Assert.Contains("chequing=$0.00 | savings=$10.00", result.Output);
+        Assert.Contains("EXIT", result.Output);
     }
 
     [LiveFact]
@@ -195,27 +209,6 @@ public sealed class LiveApiSuccessTests(ITestOutputHelper output) : LiveApiTestB
         var (transcript, balance) = await RunAsync("deposit savings 10", "Show both account balances");
         Assert.Contains("You have $0.00 in chequing and $10.00 in savings.", transcript);
         Assert.Equal("chequing=$0.00 | savings=$10.00", balance);
-    }
-
-    private sealed class ObservingModel(IChatModel inner) : IChatModel
-    {
-        public int Calls { get; private set; }
-
-        public Task<string?> CompleteAsync(string instructions, string input, string schemaName, string schema)
-        {
-            Calls++;
-            return inner.CompleteAsync(instructions, input, schemaName, schema);
-        }
-    }
-
-    private sealed class DirectConsole(params string[] input) : IConsoleIO
-    {
-        private readonly Queue<string?> lines = new(input);
-        public StringWriter Output { get; } = new() { NewLine = "\n" };
-        public bool IsInputRedirected => true;
-        public string? ReadLine() => lines.TryDequeue(out string? line) ? line : null;
-        public void Write(string text) => Output.Write(text);
-        public void WriteLine(string text) => Output.WriteLine(text);
     }
 }
 

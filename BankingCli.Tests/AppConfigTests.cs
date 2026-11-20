@@ -35,6 +35,43 @@ public sealed class AppConfigTests
         });
     }
 
+    [Theory]
+    [InlineData("api.example/v1")]
+    [InlineData("ftp://api.example/v1")]
+    [InlineData("https://username:password@api.example/v1")]
+    public void InvalidCustomEndpointsDisableTheModelInsteadOfUsingTheDefault(string endpoint)
+    {
+        WithEnvironment(new Dictionary<string, string?> { ["OPENAI_BASE_URL"] = endpoint }, directory =>
+        {
+            AppConfig config = AppConfig.LoadFrom(directory, environmentOverrides: true);
+
+            Assert.Equal("file-model", config.Model);
+            Assert.Null(config.ApiKey);
+            Assert.Null(Ai.OpenAiChatModel.Create(config));
+        });
+    }
+
+    [Fact]
+    public void DotEnvIgnoresCommentsAndPreservesEqualsInsideQuotedValues()
+    {
+        WithEnvironment(new Dictionary<string, string?>(), directory =>
+        {
+            File.AppendAllText(Path.Combine(directory, ".env"), "\n" + """
+                # OPENAI_API_KEY=wrong
+                invalid entry
+                 OPENAI_API_KEY = 'file=key'
+                 OPENAI_BASE_URL = "https://api.example/v1"
+                 USER_APPROVAL_REQUIRED = "false"
+                """);
+
+            AppConfig config = AppConfig.LoadFrom(directory, environmentOverrides: false);
+
+            Assert.Equal("file=key", config.ApiKey);
+            Assert.Equal(new Uri("https://api.example/v1"), config.Endpoint);
+            Assert.False(config.ApprovalRequired);
+        });
+    }
+
     private static void WithEnvironment(Dictionary<string, string?> replacements, Action<string> assert)
     {
         string directory = Directory.CreateTempSubdirectory("banking-cli-env-").FullName;
