@@ -88,15 +88,26 @@ internal sealed class ConversationLoop(
         string[] tokens = input.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         return tokens switch
         {
-            ["help" or "?" or "exit" or "balance"] => true,
-            ["balance", "chequing" or "savings"] => true,
-            ["deposit" or "withdraw", "chequing" or "savings", var amount] => IsAmountToken(amount),
-            ["transfer", "chequing" or "savings", "chequing" or "savings", var amount] => IsAmountToken(amount),
+            ["help" or "?" or "exit", ..] => true,
+            ["balance"] => true,
+            ["balance", not ("both" or "all" or "please")] => true,
+            // A preposition in an account slot signals an English request, even if it is incomplete.
+            ["deposit" or "withdraw", "from" or "to" or "in" or "into", ..] => false,
+            ["transfer", "from" or "to", ..] or ["transfer", _, "from" or "to" or "into", ..] => false,
+            ["deposit" or "withdraw", "chequing" or "savings"] => true,
+            ["deposit" or "withdraw", var account, var amount] =>
+                IsAmountToken(amount) || (IsAccount(account) && !amount.StartsWith('$')),
+            ["transfer", "chequing" or "savings", "chequing" or "savings"] => true,
+            ["transfer", var from, var to, var amount] =>
+                (IsAccount(from) && IsAccount(to) && !amount.StartsWith('$'))
+                || ((IsAccount(from) || IsAccount(to)) && IsAmountToken(amount)),
             _ => false
         };
     }
 
-    // Let the simulator accept or reject numeric tokens, while words and dollar amounts can be interpreted.
+    private static bool IsAccount(string token) => token is "chequing" or "savings";
+
+    // Keep validation of numeric tokens with the simulator, including invalid numeric formats.
     private static bool IsAmountToken(string token) => token.AsSpan().IndexOfAnyExcept("0123456789.+-,") < 0;
 }
 

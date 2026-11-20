@@ -48,9 +48,9 @@ Run from the repository root. Copy `.env.example` to `.env`, or set the variable
 | Variable | Meaning |
 | --- | --- |
 | `OPENAI_API_KEY` | Your provider's API key. Keep it in your environment or the gitignored `.env` file. |
-| `OPENAI_MODEL` | A model that supports Chat Completions with strict JSON Schema output. The example uses `gpt-4.1-mini`. |
+| `OPENAI_MODEL` | Set to `gpt-6-luna` for this setup. Other models must support Chat Completions with strict JSON Schema output. |
 | `OPENAI_BASE_URL` | Optional API base URL, such as `https://api.openai.com/v1`. The SDK appends `/chat/completions`. If unset, the SDK uses OpenAI's default endpoint. |
-| `OPENAI_REASONING` | Optional reasoning effort, such as `low`. Set it only if your model supports it. |
+| `OPENAI_REASONING` | Set to `low` for this setup. This setting is optional when using other models. |
 | `USER_APPROVAL_REQUIRED` | Optional, defaults to `false`. Set it to `true` to preview and confirm plain-English deposits, withdrawals, and transfers. |
 
 With approval enabled, answer `y` or `yes` to execute the previewed transaction. Approval requires interactive input. For piped input the CLI skips the transaction and continues with the next line. Balance requests and direct commands run without an approval prompt.
@@ -63,7 +63,7 @@ With approval enabled, answer `y` or `yes` to execute the previewed transaction.
 - “How much is in savings?”
 - “Show both account balances.”
 
-Submit one operation per line. If asked for clarification, include all details when you retry. If the reply API is unavailable after a command runs, the CLI prints the simulator's original result.
+Submit one operation per line. Clarification comes before approval, even when approval is enabled. If asked for clarification, include all details when you retry. Malformed positional commands show the simulator's error directly. If the reply API is unavailable after a command runs, the CLI prints the simulator's original result.
 
 ## Verification
 

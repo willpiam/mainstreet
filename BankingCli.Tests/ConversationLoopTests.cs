@@ -32,6 +32,23 @@ public sealed class ConversationLoopTests
         Assert.Equal("AI is not configured. Type help for commands.\nERROR INVALID_AMOUNT\nsavings=$0.00\n", output);
     }
 
+    [Theory]
+    [InlineData("help extra", "ERROR INVALID_ARGUMENTS")]
+    [InlineData("exit extra", "ERROR INVALID_ARGUMENTS")]
+    [InlineData("balance checking", "ERROR INVALID_ACCOUNT")]
+    [InlineData("deposit investment 5", "ERROR INVALID_ACCOUNT")]
+    [InlineData("withdraw savings invalid", "ERROR INVALID_AMOUNT")]
+    [InlineData("transfer savings investment 5", "ERROR INVALID_ACCOUNT")]
+    [InlineData("transfer savings chequing", "ERROR INVALID_ARGUMENTS")]
+    public async Task InvalidDirectCommandsReportSimulatorErrorsWithoutCallingTheModel(string input, string error)
+    {
+        var model = new ScriptedModel();
+        string output = await RunAsync(model, [input, "balance", "exit"], approval: true);
+
+        Assert.Equal($"{error}\nchequing=$0.00 | savings=$0.00\nEXIT\n", output);
+        Assert.Empty(model.Calls);
+    }
+
     [Fact]
     public async Task NaturalLanguageSupportsAllOperationsAndBalanceScopes()
     {
@@ -46,7 +63,7 @@ public sealed class ConversationLoopTests
         string output = await RunAsync(model, [
             "Deposit $10 into savings", "Transfer four dollars from savings to chequing",
             "Withdraw $1.50 from chequing", "How much is in savings?", "How much is in chequing?",
-            "Show both account balances"
+            "Balance both"
         ]);
 
         Assert.Equal("""
@@ -66,6 +83,8 @@ public sealed class ConversationLoopTests
 
     [Theory]
     [InlineData("Transfer $4 out of savings", "clarify", "direction", "source and destination")]
+    [InlineData("Transfer from savings 10", "clarify", "direction", "source and destination")]
+    [InlineData("Transfer savings to chequing", "clarify", "amount", "positive dollar amount")]
     [InlineData("Put some money into savings", "clarify", "amount", "positive dollar amount")]
     [InlineData("What is my balance?", "clarify", "account", "account name")]
     [InlineData("Transfer a dollar 15 from savings to checking", "clarify", "amount", "positive dollar amount")]
@@ -77,6 +96,23 @@ public sealed class ConversationLoopTests
 
         Assert.Contains(expected, output);
         Assert.EndsWith("chequing=$0.00 | savings=$10.00\n", output);
+        Assert.Single(model.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AmbiguousRequestAsksForClarificationBeforeAnyApproval(bool approval)
+    {
+        var model = new ScriptedModel(Request(kind: "clarify", message: "amount"));
+        string output = await RunAsync(model,
+            ["deposit savings 20", "Transfer a dollar 15 from savings to checking", "balance", "exit"],
+            approval: approval, redirected: false);
+
+        Assert.Contains("Please include a positive dollar amount", output);
+        Assert.DoesNotContain("[y/N]", output);
+        Assert.Contains("chequing=$0.00 | savings=$20.00\n", output);
+        Assert.EndsWith("bank> EXIT\n", output);
         Assert.Single(model.Calls);
     }
 
