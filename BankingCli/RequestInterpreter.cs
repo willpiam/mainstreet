@@ -14,7 +14,8 @@ internal sealed class RequestInterpreter(IChatModel model)
         For multiple requested operations, return unsupported with message one_operation. A balance check
         for both accounts is one operation. Use scope both only when the user asks for both or all balances.
         An unspecified single balance needs clarification. The only accounts are chequing and savings.
-        Recognize common names like checking for chequing, but never substitute a different account.
+        Recognize common names like checking for chequing, and obvious misspellings like checquing or
+        savngs for the account they clearly name, but never substitute a different account.
         Convert clear amounts written in words or with a dollar sign to a positive decimal string with
         at most two decimal places and no sign, currency symbol, or grouping separators. Never round.
         An amount is clear only when its words or digits have one reading, such as $1.15, 1.15, fifteen dollars,

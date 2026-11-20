@@ -170,10 +170,12 @@ public sealed class LiveApiSuccessTests(ITestOutputHelper output) : LiveApiTestB
         Assert.Equal("chequing=$4.00 | savings=$0.00", balance);
     }
 
-    [LiveFact]
-    public async Task CheckingIsTreatedAsChequing()
+    [LiveTheory]
+    [InlineData("checking")]
+    [InlineData("checquing")]
+    public async Task OtherSpellingsOfChequingAreTreatedAsChequing(string account)
     {
-        var (transcript, balance) = await RunAsync("Deposit ten dollars into checking");
+        var (transcript, balance) = await RunAsync($"Deposit ten dollars into {account}");
         Assert.Contains("You have $10.00 in chequing.", transcript);
         Assert.Equal("chequing=$10.00 | savings=$0.00", balance);
     }
@@ -246,7 +248,7 @@ public sealed class LiveApiFailureTests(ITestOutputHelper output) : LiveApiTestB
     }
 
     [LiveTheory]
-    [InlineData("Transfer a dollar 15 from savings to checking")]
+    [InlineData("Transfer a dollar 15 from savings to chequing")]
     [InlineData("Transfer a dollar fifteen from savings to chequing")]
     [InlineData("Withdraw five 20 from savings")]
     public async Task AmbiguousAmountAsksForClarification(string request)
@@ -261,7 +263,7 @@ public sealed class LiveApiFailureTests(ITestOutputHelper output) : LiveApiTestB
     public async Task AmbiguousDollarAmountAsksForClarification()
     {
         var (transcript, balance) = await RunAsync(
-            "deposit chequing 100", "transfer a dollar 15 from checking to savings");
+            "deposit chequing 100", "transfer a dollar 15 from chequing to savings");
         Assert.Equal("Please include a positive dollar amount with up to two decimal places and try again.",
             LastReply(transcript));
         Assert.Equal("chequing=$100.00 | savings=$0.00", balance);
