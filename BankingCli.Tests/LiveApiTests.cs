@@ -236,6 +236,16 @@ public sealed class LiveApiFailureTests(ITestOutputHelper output) : LiveApiTestB
     }
 
     [LiveFact]
+    public async Task AmbiguousDollarAmountAsksForClarification()
+    {
+        var (transcript, balance) = await RunAsync(
+            "deposit chequing 100", "transfer a dollar 15 from checking to savings");
+        Assert.Equal("Please include a positive dollar amount with up to two decimal places and try again.",
+            LastReply(transcript));
+        Assert.Equal("chequing=$100.00 | savings=$0.00", balance);
+    }
+
+    [LiveFact]
     public async Task TransferAboveTheBalanceIsDeclined()
     {
         var (transcript, balance) = await RunAsync(
