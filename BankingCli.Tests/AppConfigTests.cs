@@ -7,7 +7,8 @@ public sealed class AppConfigTests
 {
     private static readonly string[] Keys =
     [
-        "OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_BASE_URL", "OPENAI_REASONING", "USER_APPROVAL_REQUIRED"
+        "OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_BASE_URL", "OPENAI_REASONING", "USER_APPROVAL_REQUIRED",
+        "SUMMARY_SETTING"
     ];
 
     [Fact]
@@ -20,6 +21,7 @@ public sealed class AppConfigTests
             Assert.Equal("file-model", config.Model);
             Assert.Equal("file-effort", config.Reasoning);
             Assert.True(config.ApprovalRequired);
+            Assert.Equal(SummarySetting.Safe, config.Summary);
         });
     }
 
@@ -69,6 +71,33 @@ public sealed class AppConfigTests
             Assert.Equal("file=key", config.ApiKey);
             Assert.Equal(new Uri("https://api.example/v1"), config.Endpoint);
             Assert.False(config.ApprovalRequired);
+            Assert.Equal(SummarySetting.Safe, config.Summary);
+        });
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("safe", false)]
+    [InlineData("Generated", true)]
+    [InlineData("no", false)]
+    public void SummarySettingIsGeneratedOnlyForThatValue(string? value, bool generated)
+    {
+        WithEnvironment(new Dictionary<string, string?> { ["SUMMARY_SETTING"] = value }, directory =>
+        {
+            SummarySetting expected = generated ? SummarySetting.Generated : SummarySetting.Safe;
+            Assert.Equal(expected, AppConfig.LoadFrom(directory, environmentOverrides: true).Summary);
+        });
+    }
+
+    [Fact]
+    public void EnvironmentSummaryOverridesTheFile()
+    {
+        WithEnvironment(new Dictionary<string, string?> { ["SUMMARY_SETTING"] = "safe" }, directory =>
+        {
+            File.AppendAllText(Path.Combine(directory, ".env"), "\nSUMMARY_SETTING=\"generated\"\n");
+
+            Assert.Equal(SummarySetting.Safe, AppConfig.LoadFrom(directory, environmentOverrides: true).Summary);
+            Assert.Equal(SummarySetting.Generated, AppConfig.LoadFrom(directory, environmentOverrides: false).Summary);
         });
     }
 

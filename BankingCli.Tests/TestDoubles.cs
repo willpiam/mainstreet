@@ -5,11 +5,11 @@ namespace BankingCli.Tests;
 internal sealed class ScriptedModel(params string?[] responses) : IChatModel
 {
     public Queue<string?> Responses { get; } = new(responses);
-    public List<(string Schema, string Input)> Calls { get; } = [];
+    public List<(string Schema, string Input, string SchemaDocument)> Calls { get; } = [];
 
     public Task<string?> CompleteAsync(string instructions, string input, string schemaName, string schema)
     {
-        Calls.Add((schemaName, input));
+        Calls.Add((schemaName, input, schema));
         return Task.FromResult(Responses.Dequeue());
     }
 }

@@ -32,8 +32,9 @@ Run from the repository root. Copy `.env.example` to `.env`, or set the variable
 | `OPENAI_BASE_URL` | Optional API base URL, such as `https://api.openai.com/v1`. The SDK appends `/chat/completions`. If unset, the SDK uses OpenAI's default endpoint. |
 | `OPENAI_REASONING` | Set to `low` for this setup. This setting is optional when using other models. |
 | `USER_APPROVAL_REQUIRED` | Optional, defaults to `false`. Set it to `true` to preview and confirm plain-English deposits, withdrawals, and transfers. |
+| `SUMMARY_SETTING` | Optional, defaults to `safe`. `safe` has the model pick a wording and the app fill in the simulator's amounts. `generated` has the model write the conversational reply. Any other value is treated as `safe`. |
 
-With `USER_APPROVAL_REQUIRED` enabled, answer `y` or `yes` to execute the previewed transaction.  
+With `USER_APPROVAL_REQUIRED` enabled, answer `y` or `yes` to execute the previewed transaction. If the reply call fails in either summary mode, the CLI prints the simulator's original result and does not run the command again.  
 
 ## Plain-English examples
 
@@ -42,8 +43,6 @@ With `USER_APPROVAL_REQUIRED` enabled, answer `y` or `yes` to execute the previe
 - “Withdraw a dollar from chequing.”
 - “How much is in savings?”
 - “Show both account balances.”
-
-
 
 ## How I worked
 
@@ -57,6 +56,10 @@ With `USER_APPROVAL_REQUIRED` enabled, answer `y` or `yes` to execute the previe
 - Implemented the plan with codex
 - Tested manually and wrote automated tests
 - Rechecked instructions for anything I might have missed
+
+### Accepted, Changed, Or Rejected suggestion
+
+Codex suggested that we use a templating system for our responses where the LLM would select a tone and the code would use that selection to choose a template of a response and fill in the numbers when relevant. The idea was to make the system more deterministic and easier to test. I accepted the suggestion but later put it behind an env variable called `SUMMARY_SETTING` to make sure we remained aligned with the project instructions. 
 
 ### AI Tools Used
 

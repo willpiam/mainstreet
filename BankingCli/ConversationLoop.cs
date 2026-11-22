@@ -3,10 +3,11 @@ using BankingCli.Ai;
 namespace BankingCli;
 
 internal sealed class ConversationLoop(
-    BankSession bank, IConsoleIO console, IChatModel? model, bool approvalRequired)
+    BankSession bank, IConsoleIO console, IChatModel? model, bool approvalRequired,
+    SummarySetting summary = SummarySetting.Safe)
 {
     private readonly RequestInterpreter? interpreter = model is null ? null : new RequestInterpreter(model);
-    private readonly ReplyWriter? replyWriter = model is null ? null : new ReplyWriter(model);
+    private readonly ReplyWriter? replyWriter = model is null ? null : new ReplyWriter(model, summary);
 
     public async Task RunAsync()
     {

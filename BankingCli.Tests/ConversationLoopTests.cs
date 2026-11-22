@@ -198,7 +198,48 @@ public sealed class ConversationLoopTests
 
         Assert.Contains("TRANSFER $4.00 FROM savings TO chequing | savings=$6.00 | chequing=$4.00", output);
         Assert.EndsWith("chequing=$4.00 | savings=$6.00\n", output);
+        AssertReplyFacts(model);
+    }
 
+    [Fact]
+    public async Task GeneratedSummaryPrintsTheModelReply()
+    {
+        const string reply = "I moved $4.00 from savings to chequing. You now have $6.00 in savings and $4.00 in chequing.";
+        var model = new ScriptedModel(
+            Request("transfer", from: "savings", to: "chequing", amount: "4"),
+            JsonSerializer.Serialize(new { reply }));
+
+        string output = await RunAsync(model, ["deposit savings 10", "Move four dollars from savings to chequing", "balance"],
+            summary: SummarySetting.Generated);
+
+        Assert.Contains(reply, output);
+        Assert.DoesNotContain("TRANSFER $", output);
+        Assert.EndsWith("chequing=$4.00 | savings=$6.00\n", output);
+        Assert.Contains("\"reply\"", model.Calls[1].SchemaDocument);
+        AssertReplyFacts(model);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{invalid")]
+    [InlineData("{\"reply\":\"\"}")]
+    [InlineData("{\"reply\":\"   \"}")]
+    [InlineData("{\"wording\":\"concise\"}")]
+    [InlineData("{\"reply\":\"I moved $4.00.\",\"extra\":true}")]
+    public async Task GeneratedSummaryFailureShowsRawResultWithoutRunningTransferAgain(string? reply)
+    {
+        var model = new ScriptedModel(Request("transfer", from: "savings", to: "chequing", amount: "4"), reply);
+        string output = await RunAsync(model, ["deposit savings 10", "Move four dollars from savings to chequing", "balance"],
+            summary: SummarySetting.Generated);
+
+        Assert.Contains("TRANSFER $4.00 FROM savings TO chequing | savings=$6.00 | chequing=$4.00", output);
+        Assert.DoesNotContain("I moved $4.00.", output);
+        Assert.EndsWith("chequing=$4.00 | savings=$6.00\n", output);
+        AssertReplyFacts(model);
+    }
+
+    private static void AssertReplyFacts(ScriptedModel model)
+    {
         using JsonDocument facts = JsonDocument.Parse(model.Calls[1].Input);
         JsonElement balances = facts.RootElement.GetProperty("balances");
         Assert.Equal("savings", balances[0].GetProperty("account").GetString());
@@ -214,10 +255,10 @@ public sealed class ConversationLoopTests
     private static string Reply(string wording) => JsonSerializer.Serialize(new { wording });
 
     private static async Task<string> RunAsync(ScriptedModel? model, string?[] input, bool approval = false,
-        bool redirected = true, BankSession? bank = null)
+        bool redirected = true, BankSession? bank = null, SummarySetting summary = SummarySetting.Safe)
     {
         var console = new ScriptedConsole(input, redirected);
-        await new ConversationLoop(bank ?? new BankSession(), console, model, approval).RunAsync();
+        await new ConversationLoop(bank ?? new BankSession(), console, model, approval, summary).RunAsync();
         if (model is not null)
         {
             Assert.Empty(model.Responses);

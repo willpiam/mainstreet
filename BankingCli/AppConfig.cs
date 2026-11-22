@@ -1,7 +1,14 @@
 namespace BankingCli;
 
+internal enum SummarySetting
+{
+    Safe,
+    Generated
+}
+
 internal sealed record AppConfig(
-    string? ApiKey, string? Model, Uri? Endpoint, string? Reasoning, bool ApprovalRequired)
+    string? ApiKey, string? Model, Uri? Endpoint, string? Reasoning, bool ApprovalRequired,
+    SummarySetting Summary = SummarySetting.Safe)
 {
     public static AppConfig Load() => LoadFrom(Directory.GetCurrentDirectory(), environmentOverrides: true);
 
@@ -48,6 +55,12 @@ internal sealed record AppConfig(
         }
 
         bool approval = bool.TryParse(Get("USER_APPROVAL_REQUIRED"), out bool required) && required;
-        return new AppConfig(key?.Trim(), model, endpoint, Get("OPENAI_REASONING")?.Trim(), approval);
+        SummarySetting summary = ParseSummary(Get("SUMMARY_SETTING"));
+        return new AppConfig(key?.Trim(), model, endpoint, Get("OPENAI_REASONING")?.Trim(), approval, summary);
     }
+
+    private static SummarySetting ParseSummary(string? value) =>
+        string.Equals(value?.Trim(), "generated", StringComparison.OrdinalIgnoreCase)
+            ? SummarySetting.Generated
+            : SummarySetting.Safe;
 }
