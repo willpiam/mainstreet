@@ -88,4 +88,6 @@ In a fresh session seeded with $10.00 in savings, I also returned an HTTP error 
     - *The exercise says to run a plain-English request only when it maps cleanly onto one command, and to ask for a missing or unclear detail before changing either balance.*
     - I will note that if `USER_APPROVAL_REQUIRED` had been enabled the user would have been able to catch this before approval 
     - using claude I created [A plan to clarify ambiguous amounts](.cursor/plans/clarify_ambiguous_amounts_d566e37a.plan.md)
-    
+- in a seperate branch decided to absolutly spam tests. Created 111 new tests 
+    - caught an intreasting case. "What would happen if I put $5 into savings?"
+    - decided to merge these tests into master
