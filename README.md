@@ -4,7 +4,7 @@
 
 With the .NET 10 SDK installed, run this from the repo root.
 
-```sh
+```bash
 dotnet build BankingCli.sln
 dotnet run --project BankingCli
 ```
