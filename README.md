@@ -72,4 +72,15 @@ Codex suggested that we use a templating system for our responses where the LLM 
 | --- | --- |
 | Successful transfer | Ran `deposit savings 10`, entered “Transfer four dollars from savings to chequing”, then ran `balance`. The reply reported the $4.00 transfer from savings to chequing. `balance` showed $6.00 in savings and $4.00 in chequing. |
 | Insufficient funds | Entered “Transfer seven dollars from savings to chequing”, then ran `balance`. The reply explained that savings had insufficient funds. Savings stayed at $6.00 and chequing at $4.00. |
-| Ambiguous amount | Entered “transfer a dollar 15 from savings to checking”. The phrase was misread as $15.00, and the CLI transferred $15.00.  |
+| Ambiguous amount | Entered “transfer a dollar 15 from savings to checking”. The phrase was misread as $15.00, and the CLI transferred $15.00. This led to my decision to implement `SUMMARY_SETTING` and "safe" mode. |
+
+### 196 Tests
+
+I have 196 tests all of which are passing with the following settings:
+
+```ini
+OPENAI_MODEL="gpt-6-luna"
+OPENAI_REASONING="none"
+USER_APPROVAL_REQUIRED="false"
+SUMMARY_SETTING="generated"
+```
